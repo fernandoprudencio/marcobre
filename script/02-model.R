@@ -38,10 +38,9 @@ library(doParallel)
 library(modeest)
 
 #' READ VECTORIAL DATA
-samples <- st_read("data/vector/polygons.gpkg",
-  layer = "polygons", quiet = T, as_tibble = T
+samples <- st_read("data/vector/samples.gpkg",
+  layer = "samples 2020", quiet = T, as_tibble = T
 ) %>%
-  dplyr::select(-new_id) %>%
   rename(
     "Name" = "class",
     "clase" = "value"
@@ -51,15 +50,17 @@ samples <- st_read("data/vector/polygons.gpkg",
 #'   Location of predictors by year
 sen2 <-
   list.files(
-    "data/raster/sentinel",
+    "data/raster/stack/masked",
     recursive = F,
     full.names = T
   )
 
 # for (i in 1:length(fldrs)) {
-  i <- 1
+  i <- 3
   #' Read of predictors stacked
   cov.raster <- brick(sen2[i])
+  names(cov.raster) <-
+    c("blue", "green", "red", "nir", "ndvi", "ndwi", "elev")
 
   #' Extract predictor values from samples
   df <- raster::extract(cov.raster, samples, df = T) %>%
@@ -73,8 +74,6 @@ sen2 <-
     dplyr::mutate(id.cls = as.factor(id.cls)) %>%
     drop_na()
   
-  names(df)[2:5] <- c("blue", "green", "red", "nir")
-
   #' Select training and testing data
   set.seed(2020)
   random.sample <- createDataPartition(y = df$id.cls, p = 0.7, list = FALSE)
@@ -86,7 +85,7 @@ sen2 <-
   fitControl <- trainControl(method = "cv", number = 3)
   #'   train model
   rf.model <- train(
-    id.cls ~ nir + red +blue + green,
+    id.cls ~ nir + red + green + blue + ndvi + ndwi + elev,
     data = training,
     method = "parRF",
     ntree = 500,
@@ -102,7 +101,6 @@ sen2 <-
   #'   calculate kappa value
   kappa <- kappa(con.mtx$table)
   #'   predict raster dataset
-  names(cov.raster) <- c("blue", "green", "red", "nir")
   result.raster <- raster::predict(cov.raster, rf.model)
 
   #' Apply focal function to classified raster
@@ -137,24 +135,24 @@ sen2 <-
   write.table(
     kappa$coef,
     sprintf(
-      "data/text/%1$s.txt",
-      basename(sen2[i]) %>% str_sub(1, -5)
+      "data/text/kappa_%1$s.txt",
+      basename(sen2[i]) %>% str_sub(-8, -5)
     )
   )
   #' Write confusion matrix
   write.csv(
     con.mtx$table,
     sprintf(
-      "data/text/testing/%1$s.csv",
-      basename(sen2[i]) %>% str_sub(1, -5)
+      "data/text/testing/cmatrix_%1$s.csv",
+      basename(sen2[i]) %>% str_sub(-8, -5)
     )
   )
   #' Write classified raster
   writeRaster(
     result.raster,
     sprintf(
-      "data/raster/landcover/%1$s.tif",
-      basename(sen2[i]) %>% str_sub(1, -5),
+      "data/raster/landcover/cover_%1$s.tif",
+      basename(sen2[i]) %>% str_sub(-8, -5),
       datatype = "INT2S", overwrite = T
     )
   )
