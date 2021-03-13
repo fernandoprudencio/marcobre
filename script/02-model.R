@@ -36,15 +36,19 @@ library(randomForest)
 library(caret)
 library(doParallel)
 library(modeest)
+library(rgdal)
 
 #' READ VECTORIAL DATA
-samples <- st_read("data/vector/samples.gpkg",
-  layer = "samples 2020", quiet = T, as_tibble = T
+samples <- st_read(
+  dsn = "data/vector/samples.gpkg",
+  layer = "sample2018", as_tibble = T
 ) %>%
   rename(
     "Name" = "class",
     "clase" = "value"
-  )
+  ) %>%
+  drop_na() %>%
+  st_as_sf()
 
 #' BUILDING OF MODEL
 #'   Location of predictors by year
@@ -56,7 +60,7 @@ sen2 <-
   )
 
 # for (i in 1:length(fldrs)) {
-  i <- 3
+  i <- 2
   #' Read of predictors stacked
   cov.raster <- brick(sen2[i])
   names(cov.raster) <-
