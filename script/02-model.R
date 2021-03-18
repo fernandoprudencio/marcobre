@@ -40,8 +40,8 @@ library(rgdal)
 
 #' READ VECTORIAL DATA
 samples <- st_read(
-  dsn = "data/vector/samples.gpkg",
-  layer = "sample2018", as_tibble = T
+  dsn = "data/vector/s_final_2020.gpkg",
+  layer = "s_final_2020", as_tibble = T
 ) %>%
   rename(
     "Name" = "class",
@@ -60,7 +60,7 @@ sen2 <-
   )
 
 # for (i in 1:length(fldrs)) {
-  i <- 2
+  i <- 3
   #' Read of predictors stacked
   cov.raster <- brick(sen2[i])
   names(cov.raster) <-
@@ -96,8 +96,10 @@ sen2 <-
     na.action = na.exclude,
     trControl = fitControl
   )
+  #'   save trainned model
+  save(rf.model, file = "data/rf.model_2018.RData")
   #'   test model
-  rf.prdct <- predict(rf.model, newdata = testing)
+  rf.prdct <- predict(rf.model, newdata = dplyr::select(testing, -id.cls))
   #'   build confusion matrix
   con.mtx <- confusionMatrix(
     data = rf.prdct, testing$id.cls, dnn = c("original", "predicted")
